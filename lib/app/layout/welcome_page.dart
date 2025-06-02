@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:jaga_app/app/layout/widget_tree.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -11,18 +10,18 @@ class WelcomePage extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           // Background
-          Image.asset(
-            'assets/images/background.jpeg',
-            fit: BoxFit.cover,
-          ),
+          // Image.asset(
+          //   'assets/images/background.jpeg',
+          //   fit: BoxFit.cover,
+          // ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
-              Image.asset(
-                'assets/images/jaga-icon.png',
-                height: 150,
-              ),
+              // Image.asset(
+              //   'assets/images/jaga-icon.png',
+              //   height: 150,
+              // ),
               const SizedBox(height: 20),
               const Text(
                 "WELCOME TO JAGA",
@@ -43,10 +42,7 @@ class WelcomePage extends StatelessWidget {
               const Spacer(),
               GestureDetector(
                 onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const WidgetTree()),
-                  );
+                  
                 },
                 child: const Icon(
                   Icons.arrow_forward,
