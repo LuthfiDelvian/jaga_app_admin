@@ -9,19 +9,18 @@ class WelcomePage extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background
-          // Image.asset(
-          //   'assets/images/background.jpeg',
-          //   fit: BoxFit.cover,
-          // ),
+          Image.asset(
+            'assets/images/background.jpeg',
+            fit: BoxFit.cover,
+          ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
-              // Image.asset(
-              //   'assets/images/jaga-icon.png',
-              //   height: 150,
-              // ),
+              Image.asset(
+                'assets/images/jaga-icon.png',
+                height: 150,
+              ),
               const SizedBox(height: 20),
               const Text(
                 "WELCOME TO JAGA",
