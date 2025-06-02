@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jaga_app_admin/app/pages/login_register_page.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -9,18 +10,12 @@ class WelcomePage extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/images/background.jpeg',
-            fit: BoxFit.cover,
-          ),
+          Image.asset('assets/images/background.jpeg', fit: BoxFit.cover),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
-              Image.asset(
-                'assets/images/jaga-icon.png',
-                height: 150,
-              ),
+              Image.asset('assets/images/jaga-icon.png', height: 150),
               const SizedBox(height: 20),
               const Text(
                 "WELCOME TO JAGA",
@@ -33,15 +28,16 @@ class WelcomePage extends StatelessWidget {
               const SizedBox(height: 5),
               const Text(
                 "Smart Reporting Starts Here.",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const Spacer(),
               GestureDetector(
                 onTap: () {
-                  
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const LoginRegisterPage(),
+                    ),
+                  );
                 },
                 child: const Icon(
                   Icons.arrow_forward,
