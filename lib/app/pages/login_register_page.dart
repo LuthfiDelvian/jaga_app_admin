@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/dashboard_page.dart';
-
+import 'package:jaga_app_admin/app/layout/main_shell.dart';
 class LoginRegisterPage extends StatefulWidget {
   const LoginRegisterPage({super.key});
 
@@ -98,7 +97,7 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
                                 Navigator.of(context).pushReplacement(
                                   MaterialPageRoute(
                                     builder:
-                                        (context) => const AdminDashboardPage(),
+                                        (context) => const MainShell(),
                                   ),
                                 );
                               },
