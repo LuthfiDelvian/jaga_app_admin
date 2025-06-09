@@ -33,7 +33,6 @@ class MainDrawer extends StatelessWidget {
                 ),
               ),
               _buildDrawerItem('Dashboard', 0),
-              _buildDrawerItem('Laporan Masuk', 1),
               _buildDrawerItem('Artikel', 2),
               _buildDrawerItem('Pengaturan', 3),
             ],

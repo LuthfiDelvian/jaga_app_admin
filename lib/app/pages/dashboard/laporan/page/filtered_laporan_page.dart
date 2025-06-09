@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/laporan_detail_page.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/laporan_card.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/status_color.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/title_card.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/utils/format_tanggal.dart';
 
 class FilteredLaporanPage extends StatelessWidget {
   final List<String> statusList;
@@ -10,48 +15,6 @@ class FilteredLaporanPage extends StatelessWidget {
     required this.statusList,
     required this.title,
   });
-
-  Widget buildStatusChip(String status) {
-    Color color;
-    switch (status.toLowerCase()) {
-      case 'selesai':
-        color = Colors.green;
-        break;
-      case 'ditolak':
-        color = Colors.red;
-        break;
-      case 'diproses':
-        color = Colors.blueGrey;
-        break;
-      default:
-        color = Colors.blue;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(status, style: TextStyle(color: color)),
-    );
-  }
-
-  Widget buildTitleCard(String title, Color color) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        title,
-        style: TextStyle(fontSize: 18, color: color),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,17 +56,31 @@ class FilteredLaporanPage extends StatelessWidget {
                     final data = laporan.data() as Map<String, dynamic>;
                     final status = data['status'] ?? '-';
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      elevation: 2,
-                      child: ListTile(
-                        title: Text(data['judul'] ?? 'Tanpa Judul'),
-                        subtitle: Text('ID: ${laporan.id}'),
-                        trailing: buildStatusChip(status),
-                      ),
+                    return LaporanCard(
+                      judul: data['judul'] ?? 'Tanpa Judul',
+                      id: laporan.id,
+                      status: status,
+                      tanggal: formatTanggal(data['tanggal']),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (_) => LaporanDetailPage(
+                                  id: laporan.id,
+                                  judul: data['judul'] ?? 'Tanpa Judul',
+                                  tanggal: formatTanggal(data['tanggal']),
+                                  status: '${data['status']}',
+                                  lokasi: data['lokasi'] as String?,
+                                  instansi: data['instansi'] as String?,
+                                  isiLaporan: data['isi'] as String?,
+                                  buktiTerlampir:
+                                      (data['bukti_terlampir'] ?? false)
+                                          as bool,
+                                ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
@@ -113,18 +90,5 @@ class FilteredLaporanPage extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-Color getStatusColor(String title) {
-  switch (title.toLowerCase()) {
-    case 'laporan masuk':
-      return Colors.blue;
-    case 'laporan terverifikasi':
-      return Colors.green;
-    case 'laporan ditolak':
-      return Colors.red;
-    default:
-      return Colors.grey;
   }
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/filtered_laporan_page.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/widgets/filter_drawer.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/widgets/status_card.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/laporan_card.dart';
+import 'laporan/page/laporan_detail_page.dart';
+import 'laporan/page/filtered_laporan_page.dart';
+import 'widgets/filter_drawer.dart';
+import 'widgets/status_summary.dart';
+import 'utils/format_tanggal.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -11,112 +14,89 @@ class AdminDashboardPage extends StatefulWidget {
   State<AdminDashboardPage> createState() => _AdminDashboardPageState();
 }
 
-Future<Map<String, int>> fetchStatusCounts() async {
-  final snapshot = await FirebaseFirestore.instance.collection('laporan').get();
-  final docs = snapshot.docs;
-
-  int masuk = 0;
-  int terverifikasi = 0;
-  int ditolak = 0;
-
-  for (var doc in docs) {
-    final data = doc.data();
-    final status = (data['status'] ?? '').toString().toLowerCase();
-
+class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  void handleStatusCardTap(String status) {
     if (status == 'menunggu') {
-      masuk++;
-    } else if (status == 'diproses' || status == 'selesai') {
-      terverifikasi++;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => const FilteredLaporanPage(
+                statusList: ['Menunggu'],
+                title: 'Laporan Masuk',
+              ),
+        ),
+      );
+    } else if (status == 'terverifikasi') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => const FilteredLaporanPage(
+                statusList: ['Diproses', 'Selesai'],
+                title: 'Laporan Terverifikasi',
+              ),
+        ),
+      );
     } else if (status == 'ditolak') {
-      ditolak++;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => const FilteredLaporanPage(
+                statusList: ['Ditolak'],
+                title: 'Laporan Ditolak',
+              ),
+        ),
+      );
     }
   }
 
-  return {
-    'menunggu': masuk,
-    'terverifikasi': terverifikasi,
-    'ditolak': ditolak,
-  };
-}
-
-class _AdminDashboardPageState extends State<AdminDashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          FutureBuilder<Map<String, int>>(
-            future: fetchStatusCounts(),
+          // STREAMBUILDER UNTUK STATUS SUMMARY (REALTIME)
+          StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance.collection('laporan').snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final counts =
-                  snapshot.data ??
-                  {'menunggu': 0, 'terverifikasi': 0, 'ditolak': 0};
+              final docs = snapshot.data?.docs ?? [];
+              int masuk = 0;
+              int terverifikasi = 0;
+              int ditolak = 0;
 
-              return Row(
-                children: [
-                  buildStatusCard(
-                    '${counts['menunggu']}',
-                    'Masuk',
-                    Colors.blue,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const FilteredLaporanPage(
-                                statusList: ['Menunggu'],
-                                title: 'Laporan Masuk',
-                              ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  buildStatusCard(
-                    '${counts['terverifikasi']}',
-                    'Terverifikasi',
-                    Colors.green,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const FilteredLaporanPage(
-                                statusList: ['diproses', 'selesai'],
-                                title: 'Laporan Terverifikasi',
-                              ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  buildStatusCard(
-                    '${counts['ditolak']}',
-                    'Laporan Ditolak',
-                    Colors.red,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const FilteredLaporanPage(
-                                statusList: ['ditolak'],
-                                title: 'Laporan Ditolak',
-                              ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final status = (data['status'] ?? '').toString().toLowerCase();
+
+                if (status == 'menunggu') {
+                  masuk++;
+                } else if (status == 'diproses' || status == 'selesai') {
+                  terverifikasi++;
+                } else if (status == 'ditolak') {
+                  ditolak++;
+                }
+              }
+
+              final counts = {
+                'menunggu': masuk,
+                'terverifikasi': terverifikasi,
+                'ditolak': ditolak,
+              };
+
+              return StatusSummaryRow(
+                counts: counts,
+                onTap: handleStatusCardTap,
               );
             },
           ),
-
           const SizedBox(height: 16),
           Row(
             children: [
@@ -137,7 +117,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             child: StreamBuilder<QuerySnapshot>(
               stream:
                   FirebaseFirestore.instance
-                      .collection('laporan') // Ganti dengan nama koleksi kamu
+                      .collection('laporan')
                       .orderBy('tanggal', descending: true)
                       .snapshots(),
               builder: (context, snapshot) {
@@ -156,27 +136,31 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     final laporan = laporanList[index];
                     final data = laporan.data() as Map<String, dynamic>;
 
-                    return Card(
-                      child: ListTile(
-                        title: Text('${laporan.id}'),
-
-                        subtitle: Text('${data['judul']}'),
-                        trailing: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              data['tanggal'] is Timestamp
-                                  ? (data['tanggal'] as Timestamp)
-                                      .toDate()
-                                      .toString()
-                                      .split(' ')[0]
-                                  : data['tanggal'] ?? '',
-                            ),
-                            const SizedBox(height: 4),
-                            buildStatusChip('${data['status']}'),
-                          ],
-                        ),
-                      ),
+                    return LaporanCard(
+                      id: laporan.id,
+                      judul: data['judul'] ?? '',
+                      tanggal: formatTanggal(data['tanggal']),
+                      status: '${data['status']}',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (_) => LaporanDetailPage(
+                                  id: laporan.id,
+                                  judul: data['judul'] ?? 'Tanpa Judul',
+                                  tanggal: formatTanggal(data['tanggal']),
+                                  status: '${data['status']}',
+                                  lokasi: data['lokasi'] as String?,
+                                  instansi: data['instansi'] as String?,
+                                  isiLaporan: data['isi'] as String?,
+                                  buktiTerlampir:
+                                      (data['bukti_terlampir'] ?? false)
+                                          as bool,
+                                ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
