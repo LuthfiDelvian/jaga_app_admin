@@ -111,20 +111,6 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
                               ),
                             ),
                             const SizedBox(height: 15),
-                            const Text(
-                              'atau',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                            const SizedBox(height: 10),
-                            OutlinedButton.icon(
-                              onPressed: () {},
-                              icon: Icon(Icons.access_alarm),
-                              label: const Text('Masuk dengan Google'),
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(45),
-                              ),
-                            ),
-                            const SizedBox(height: 15),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [

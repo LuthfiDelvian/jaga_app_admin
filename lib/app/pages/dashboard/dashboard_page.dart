@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/laporan/filtered_laporan_page.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/widgets/filter_drawer.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/widgets/status_card.dart';
 
@@ -10,6 +11,34 @@ class AdminDashboardPage extends StatefulWidget {
   State<AdminDashboardPage> createState() => _AdminDashboardPageState();
 }
 
+Future<Map<String, int>> fetchStatusCounts() async {
+  final snapshot = await FirebaseFirestore.instance.collection('laporan').get();
+  final docs = snapshot.docs;
+
+  int masuk = 0;
+  int terverifikasi = 0;
+  int ditolak = 0;
+
+  for (var doc in docs) {
+    final data = doc.data();
+    final status = (data['status'] ?? '').toString().toLowerCase();
+
+    if (status == 'menunggu') {
+      masuk++;
+    } else if (status == 'diproses' || status == 'selesai') {
+      terverifikasi++;
+    } else if (status == 'ditolak') {
+      ditolak++;
+    }
+  }
+
+  return {
+    'menunggu': masuk,
+    'terverifikasi': terverifikasi,
+    'ditolak': ditolak,
+  };
+}
+
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   @override
   Widget build(BuildContext context) {
@@ -17,15 +46,77 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Row(
-            children: [
-              buildStatusCard('123', 'Laporan Masuk', Colors.blue),
-              const SizedBox(width: 8),
-              buildStatusCard('45', 'Terverifikasi', Colors.green),
-              const SizedBox(width: 8),
-              buildStatusCard('34', 'Laporan Ditolak', Colors.red),
-            ],
+          FutureBuilder<Map<String, int>>(
+            future: fetchStatusCounts(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final counts =
+                  snapshot.data ??
+                  {'menunggu': 0, 'terverifikasi': 0, 'ditolak': 0};
+
+              return Row(
+                children: [
+                  buildStatusCard(
+                    '${counts['menunggu']}',
+                    'Masuk',
+                    Colors.blue,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const FilteredLaporanPage(
+                                statusList: ['Menunggu'],
+                                title: 'Laporan Masuk',
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  buildStatusCard(
+                    '${counts['terverifikasi']}',
+                    'Terverifikasi',
+                    Colors.green,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const FilteredLaporanPage(
+                                statusList: ['diproses', 'selesai'],
+                                title: 'Laporan Terverifikasi',
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  buildStatusCard(
+                    '${counts['ditolak']}',
+                    'Laporan Ditolak',
+                    Colors.red,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const FilteredLaporanPage(
+                                statusList: ['ditolak'],
+                                title: 'Laporan Ditolak',
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
           ),
+
           const SizedBox(height: 16),
           Row(
             children: [
