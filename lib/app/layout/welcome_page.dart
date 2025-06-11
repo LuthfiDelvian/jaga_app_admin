@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:jaga_app_admin/app/pages/login_register_page.dart';
+import 'package:jaga_app_admin/app/pages/auth/page/login_register_page.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});

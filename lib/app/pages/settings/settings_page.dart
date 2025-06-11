@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:jaga_app_admin/app/auth_service.dart';
+import 'package:jaga_app_admin/app/pages/auth/page/login_register_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Dummy data user
-    const String photoUrl = ''; // kosong, ganti dengan NetworkImage jika punya foto profil
-    const String nama = 'Budi Raharjo';
-    const String username = '@vasilitator111';
-    const String email = 'raharjobudi19@gmail.com';
+    // Ambil data user dari Firebase Auth
+    final user = authService.value.currentUser;
+
+    // Gunakan dummy jika data kosong
+    final String photoUrl = user?.photoURL ?? '';
+    final String nama = user?.displayName ?? 'Admin Jaga';
+    final String email = user?.email ?? '-';
+    final String username = user?.email != null
+        ? '@' + (user!.email!.split('@').first)
+        : '@username';
 
     return Scaffold(
       appBar: AppBar(
@@ -79,7 +86,9 @@ class SettingsPage extends StatelessWidget {
                 ListTile(
                   title: const Text('Profil'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {}, // TODO: aksi
+                  onTap: () {
+                    // TODO: aksi edit profil
+                  },
                   dense: true,
                   shape: const Border(
                     bottom: BorderSide(color: Color(0xFFF2F2F2)),
@@ -87,9 +96,11 @@ class SettingsPage extends StatelessWidget {
                 ),
                 // Notifikasi
                 ListTile(
-                  title: const Text('Kelona Notifikasi'),
+                  title: const Text('Kelola Notifikasi'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {}, // TODO: aksi
+                  onTap: () {
+                    // TODO: aksi kelola notifikasi
+                  },
                   dense: true,
                   shape: const Border(
                     bottom: BorderSide(color: Color(0xFFF2F2F2)),
@@ -99,7 +110,9 @@ class SettingsPage extends StatelessWidget {
                 ListTile(
                   title: const Text('Bahasa'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {}, // TODO: aksi
+                  onTap: () {
+                    // TODO: aksi bahasa
+                  },
                   dense: true,
                   shape: const Border(
                     bottom: BorderSide(color: Color(0xFFF2F2F2)),
@@ -109,7 +122,9 @@ class SettingsPage extends StatelessWidget {
                 ListTile(
                   title: const Text('Tampilan'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {}, // TODO: aksi
+                  onTap: () {
+                    // TODO: aksi tampilan
+                  },
                   dense: true,
                 ),
                 // Keluar
@@ -119,8 +134,32 @@ class SettingsPage extends StatelessWidget {
                     'Keluar',
                     style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                   ),
-                  onTap: () {
-                    // TODO: aksi logout
+                  onTap: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Konfirmasi'),
+                        content: const Text('Apakah Anda yakin ingin keluar?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Batal'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Keluar', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await authService.value.signOut();
+                      // Setelah logout, redirect ke login/register page
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginRegisterPage()),
+                        (route) => false,
+                      );
+                    }
                   },
                   dense: true,
                 ),
