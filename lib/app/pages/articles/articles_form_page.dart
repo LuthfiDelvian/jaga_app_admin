@@ -32,7 +32,12 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   String? _selectedKategori;
   String? _selectedStatus = 'draft';
 
-  final List<String> kategoriList = ['Pilih', 'Kasus Korupsi', 'Edukasi', 'Berita'];
+  final List<String> kategoriList = [
+    'Pilih',
+    'Kasus Korupsi',
+    'Edukasi',
+    'Berita',
+  ];
   final List<Map<String, String>> statusList = [
     {'value': 'draft', 'label': 'Draft'},
     {'value': 'terbit', 'label': 'Terbitkan'},
@@ -81,12 +86,16 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
 
     final cloudName = 'dp0iysyni'; // GANTI sesuai Cloudinary kamu
     final uploadPreset = 'jaga_articles'; // GANTI sesuai Cloudinary kamu
-    final fileName = _imageFileName ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final fileName =
+        _imageFileName ?? DateTime.now().millisecondsSinceEpoch.toString();
 
-    final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = uploadPreset
-      ..fields['public_id'] = fileName;
+    final url = Uri.parse(
+      'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+    );
+    final request =
+        http.MultipartRequest('POST', url)
+          ..fields['upload_preset'] = uploadPreset
+          ..fields['public_id'] = fileName;
 
     if (kIsWeb && _pickedImageBytes != null && _pickedImageName != null) {
       request.files.add(
@@ -125,13 +134,17 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     if ((_pickedImage != null || _pickedImageBytes != null)) {
       final result = await _uploadImageToCloudinary();
       if (!result) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal upload gambar ke Cloudinary')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal upload gambar ke Cloudinary')),
+        );
         return;
       }
     }
 
     if (_uploadedImageUrl == null || _imageFileName == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload gambar terlebih dahulu!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Upload gambar terlebih dahulu!')),
+      );
       return;
     }
 
@@ -150,14 +163,17 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         .doc(_imageFileName)
         .set(artikelData, SetOptions(merge: true));
 
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) Navigator.pop(context, 'updated');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('JAGA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          'JAGA',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: Colors.red,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -168,7 +184,10 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           key: _formKey,
           child: ListView(
             children: [
-              const Text('Judul Artikel', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Judul Artikel',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 4),
               TextFormField(
                 controller: _judulController,
@@ -177,7 +196,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
-                validator: (v) => (v == null || v.isEmpty) ? 'Judul wajib diisi' : null,
+                validator:
+                    (v) =>
+                        (v == null || v.isEmpty) ? 'Judul wajib diisi' : null,
               ),
               const SizedBox(height: 8),
               GestureDetector(
@@ -190,21 +211,46 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                     borderRadius: BorderRadius.circular(6),
                     color: Colors.grey[100],
                   ),
-                  child: _uploadedImageUrl != null || _pickedImage != null || _pickedImageBytes != null
-                      ? (kIsWeb
-                          ? (_pickedImageBytes != null
-                              ? Image.memory(_pickedImageBytes!, height: 120, fit: BoxFit.cover)
-                              : Image.network(_uploadedImageUrl!, height: 120, fit: BoxFit.cover))
-                          : (_pickedImage != null
-                              ? Image.file(_pickedImage!, height: 120, fit: BoxFit.cover)
-                              : Image.network(_uploadedImageUrl!, height: 120, fit: BoxFit.cover)))
-                      : const Center(
-                          child: Text('+ Unggah Gambar', style: TextStyle(color: Colors.black54)),
-                        ),
+                  child:
+                      _uploadedImageUrl != null ||
+                              _pickedImage != null ||
+                              _pickedImageBytes != null
+                          ? (kIsWeb
+                              ? (_pickedImageBytes != null
+                                  ? Image.memory(
+                                    _pickedImageBytes!,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  )
+                                  : Image.network(
+                                    _uploadedImageUrl!,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  ))
+                              : (_pickedImage != null
+                                  ? Image.file(
+                                    _pickedImage!,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  )
+                                  : Image.network(
+                                    _uploadedImageUrl!,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  )))
+                          : const Center(
+                            child: Text(
+                              '+ Unggah Gambar',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                          ),
                 ),
               ),
               const SizedBox(height: 12),
-              const Text('Konten Artikel', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Konten Artikel',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 4),
               TextFormField(
                 controller: _kontenController,
@@ -215,7 +261,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
-                validator: (v) => (v == null || v.isEmpty) ? 'Konten wajib diisi' : null,
+                validator:
+                    (v) =>
+                        (v == null || v.isEmpty) ? 'Konten wajib diisi' : null,
               ),
               const SizedBox(height: 12),
               Row(
@@ -224,17 +272,24 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Kategori', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Kategori',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
                         DropdownButtonFormField<String>(
                           value: _selectedKategori,
-                          items: kategoriList
-                              .map((k) => DropdownMenuItem(
-                                    value: k,
-                                    child: Text(k),
-                                  ))
-                              .toList(),
-                          onChanged: (val) => setState(() => _selectedKategori = val),
+                          items:
+                              kategoriList
+                                  .map(
+                                    (k) => DropdownMenuItem(
+                                      value: k,
+                                      child: Text(k),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged:
+                              (val) => setState(() => _selectedKategori = val),
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             isDense: true,
@@ -248,19 +303,25 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Status',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
                         Column(
-                          children: statusList.map((s) {
-                            return RadioListTile<String>(
-                              value: s['value']!,
-                              groupValue: _selectedStatus,
-                              title: Text(s['label']!),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              onChanged: (v) => setState(() => _selectedStatus = v),
-                            );
-                          }).toList(),
+                          children:
+                              statusList.map((s) {
+                                return RadioListTile<String>(
+                                  value: s['value']!,
+                                  groupValue: _selectedStatus,
+                                  title: Text(s['label']!),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  onChanged:
+                                      (v) =>
+                                          setState(() => _selectedStatus = v),
+                                );
+                              }).toList(),
                         ),
                       ],
                     ),
@@ -277,10 +338,15 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         minimumSize: const Size.fromHeight(44),
                       ),
-                      child: const Text('Simpan Draft', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Simpan Draft',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -290,10 +356,15 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         minimumSize: const Size.fromHeight(44),
                       ),
-                      child: const Text('Terbitkan', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Terbitkan',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],

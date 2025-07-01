@@ -1,3 +1,5 @@
+import 'dart:html' as html; // Khusus untuk web
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_failed_page.dart';
@@ -11,7 +13,6 @@ class LaporanDetailPage extends StatefulWidget {
   final String? lokasi;
   final String? instansi;
   final String? isiLaporan;
-  final bool buktiTerlampir; // true jika ada bukti
 
   const LaporanDetailPage({
     super.key,
@@ -22,7 +23,6 @@ class LaporanDetailPage extends StatefulWidget {
     this.lokasi,
     this.instansi,
     this.isiLaporan,
-    this.buktiTerlampir = false,
   });
 
   @override
@@ -40,39 +40,32 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
     {'value': 'Ditolak', 'label': 'Ditolak'},
   ];
 
+  List<Map<String, dynamic>> _buktiList = [];
+
   @override
   void initState() {
     super.initState();
     _selectedStatus = widget.status;
+    _fetchBukti();
   }
 
-  Future<void> _simpanStatus() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('laporan')
-          .doc(widget.id)
-          .update({
-            'status': _selectedStatus,
-            'catatan_verifikasi': _catatanController.text,
-          });
+  Future<void> _fetchBukti() async {
+    final doc = await FirebaseFirestore.instance.collection('laporan').doc(widget.id).get();
+    final data = doc.data();
+    if (data != null && data['bukti'] != null) {
+      setState(() {
+        _buktiList = List<Map<String, dynamic>>.from(data['bukti']);
+      });
+    }
+  }
 
-      // Jika berhasil
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const StatusSavedPage()),
-        );
-      }
-    } catch (e) {
-      // Jika gagal
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StatusFailedPage(errorMessage: e.toString()),
-          ),
-        );
-      }
+  Future<void> _downloadFile(String url) async {
+    if (kIsWeb) {
+      html.AnchorElement anchorElement = html.AnchorElement(href: url);
+      anchorElement.download = '';
+      anchorElement.click();
+    } else {
+      // Tambahkan logika platform Android/iOS jika diperlukan
     }
   }
 
@@ -102,15 +95,75 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
     );
   }
 
+  Widget _buildBuktiList() {
+    if (_buktiList.isEmpty) return const Text('Tidak ada bukti terlampir.');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _buktiList.map((file) {
+        final String url = file['url'];
+        final String name = file['name'];
+        final String type = (file['type'] ?? '').toLowerCase();
+        final bool isImage = ['jpg', 'jpeg', 'png', 'webp'].contains(type);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: isImage
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(url, height: 160, fit: BoxFit.cover),
+                    ),
+                  ],
+                )
+              : ListTile(
+                  leading: const Icon(Icons.insert_drive_file),
+                  title: Text(name, overflow: TextOverflow.ellipsis),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.download),
+                    onPressed: () => _downloadFile(url),
+                  ),
+                ),
+        );
+      }).toList(),
+    );
+  }
+
+  Future<void> _simpanStatus() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('laporan')
+          .doc(widget.id)
+          .update({
+            'status': _selectedStatus,
+            'catatan_verifikasi': _catatanController.text,
+          });
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StatusSavedPage()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => StatusFailedPage(errorMessage: e.toString())),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Image.asset(
-          'assets/images/jaga-icon.png',
-          color: Colors.white,
-          height: 85,
-        ),
+        title: Image.asset('assets/images/jaga-icon.png', color: Colors.white, height: 85),
         backgroundColor: Colors.red,
         iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
@@ -119,81 +172,49 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            Text(
-              '${widget.id}',
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
-            ),
+            Text(widget.id, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                '${widget.judul}',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              child: Text(widget.judul, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             _detailRow('Tanggal', widget.tanggal),
             _detailRow('Lokasi', widget.lokasi),
             _detailRow('Instansi\nTujuan', widget.instansi),
             _detailRow('Isi\nLaporan', widget.isiLaporan),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Icon(Icons.verified, color: Colors.green, size: 20),
-                const SizedBox(width: 6),
-                const Text(
-                  'Bukti Terlampir',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-
             const SizedBox(height: 16),
-            const Text(
-              'Pilih Status Laporan',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            const Text('Bukti Terlampir', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            _buildBuktiList(),
+            const SizedBox(height: 24),
+            const Text('Pilih Status Laporan', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _selectedStatus,
               decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(),
               ),
-              items:
-                  _statusList
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item['value'],
-                          child: Text(item['label']!),
-                        ),
-                      )
-                      .toList(),
-              onChanged: (val) {
-                if (val != null) setState(() => _selectedStatus = val);
-              },
+              items: _statusList.map((item) {
+                return DropdownMenuItem(
+                  value: item['value'],
+                  child: Text(item['label']!),
+                );
+              }).toList(),
+              onChanged: (val) => setState(() => _selectedStatus = val ?? _selectedStatus),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Catatan Verifikasi [opsional]',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            const Text('Catatan Verifikasi [opsional]', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             TextField(
               controller: _catatanController,
               decoration: const InputDecoration(
-                hintText: 'Catatan Verifikasi (opsional)',
+                hintText: 'Catatan Verifikasi',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 46,
@@ -202,14 +223,9 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text(
-                  'Simpan Status',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                child: const Text('Simpan Status', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],

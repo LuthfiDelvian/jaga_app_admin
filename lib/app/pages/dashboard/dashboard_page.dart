@@ -154,9 +154,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                   lokasi: data['lokasi'] as String?,
                                   instansi: data['instansi'] as String?,
                                   isiLaporan: data['isi'] as String?,
-                                  buktiTerlampir:
-                                      (data['bukti_terlampir'] ?? false)
-                                          as bool,
                                 ),
                           ),
                         );
