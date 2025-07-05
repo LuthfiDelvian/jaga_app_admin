@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/helper/download_helper_web.dart';
+// import 'package:jaga_app_admin/app/pages/dashboard/laporan/helper/download_helper_web.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_failed_page.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_saved_page.dart';
 
@@ -141,13 +141,29 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
 
   Future<void> _simpanStatus() async {
     try {
-      await FirebaseFirestore.instance
+      final laporanRef = FirebaseFirestore.instance
           .collection('laporan')
-          .doc(widget.id)
-          .update({
-            'status': _selectedStatus,
-            'catatan_verifikasi': _catatanController.text,
-          });
+          .doc(widget.id);
+      final laporanDoc = await laporanRef.get();
+      final laporanData = laporanDoc.data();
+      final userId = laporanData?['uid'];
+
+      await laporanRef.update({
+        'status': _selectedStatus,
+        'catatan_verifikasi': _catatanController.text,
+      });
+
+      // Kirim notifikasi ke user pelapor
+      if (userId != null) {
+        await FirebaseFirestore.instance.collection('notifikasi').add({
+          'userId': userId,
+          'text':
+              'Status laporan "${widget.judul}" telah diubah menjadi $_selectedStatus',
+          'createdAt': FieldValue.serverTimestamp(),
+          'laporanId': widget.id,
+          'type': 'laporan',
+        });
+      }
 
       if (mounted) {
         Navigator.pushReplacement(

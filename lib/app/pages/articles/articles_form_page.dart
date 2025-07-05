@@ -32,6 +32,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   String? _selectedKategori;
   String? _selectedStatus = 'draft';
 
+  bool _isLoading = false; // <-- Tambahan loading state
+
   final List<String> kategoriList = [
     'Pilih',
     'Kasus Korupsi',
@@ -128,42 +130,107 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   }
 
   Future<void> _simpanArtikel({required bool isDraft}) async {
-    if (!_formKey.currentState!.validate()) return;
+    try {
+      if (!_formKey.currentState!.validate()) return;
 
-    // Jika ada gambar baru, upload, jika tidak pakai url lama
-    if ((_pickedImage != null || _pickedImageBytes != null)) {
-      final result = await _uploadImageToCloudinary();
-      if (!result) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal upload gambar ke Cloudinary')),
-        );
+      setState(() => _isLoading = true);
+
+      // Upload image jika ada yang dipilih
+      if ((_pickedImage != null || _pickedImageBytes != null)) {
+        final result = await _uploadImageToCloudinary();
+        if (!result) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Gagal upload gambar ke Cloudinary'),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      if (_uploadedImageUrl == null || _imageFileName == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Upload gambar terlebih dahulu!')),
+          );
+        }
         return;
       }
+
+      final artikelData = {
+        'id': _imageFileName,
+        'judul': _judulController.text.trim(),
+        'konten': _kontenController.text.trim(),
+        'image_url': _uploadedImageUrl,
+        'kategori': _selectedKategori ?? '',
+        'status': isDraft ? 'draft' : _selectedStatus,
+        'tanggal': DateTime.now(),
+      };
+
+      // Simpan artikel ke Firestore
+      await FirebaseFirestore.instance
+          .collection('artikel')
+          .doc(_imageFileName)
+          .set(artikelData, SetOptions(merge: true));
+
+      // Notifikasi: hanya buat jika status bukan draft
+      if (!isDraft &&
+          (_selectedStatus == 'terbit' || _selectedStatus == 'terbitkan')) {
+        final firestore = FirebaseFirestore.instance;
+        final usersSnapshot = await firestore.collection('users').get();
+
+        WriteBatch batch = firestore.batch();
+        int batchCounter = 0;
+
+        for (final userDoc in usersSnapshot.docs) {
+          final data = userDoc.data();
+          final userUid = data['id'] ?? data['username'];
+          final userRole = data['role'] ?? '';
+
+          if (userRole != 'user') continue;
+
+          if (userUid == null) continue;
+
+          final notifRef = firestore.collection('notifikasi').doc();
+          batch.set(notifRef, {
+            'userId': userUid,
+            'text': 'Artikel baru: ${_judulController.text.trim()}',
+            'createdAt': FieldValue.serverTimestamp(),
+            'artikelId': _imageFileName,
+            'type': 'artikel',
+          });
+          batchCounter++;
+
+          // Commit batch setiap 450 dokumen
+          if (batchCounter == 450) {
+            await batch.commit();
+            batch = firestore.batch();
+            batchCounter = 0;
+          }
+        }
+        if (batchCounter > 0) {
+          await batch.commit();
+        }
+      }
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context, 'updated');
+      }
+    } catch (e, stack) {
+      debugPrint('Error di _simpanArtikel: $e');
+      debugPrint('$stack');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Terjadi error: $e')));
+      }
     }
-
-    if (_uploadedImageUrl == null || _imageFileName == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Upload gambar terlebih dahulu!')),
-      );
-      return;
-    }
-
-    final artikelData = {
-      'id': _imageFileName,
-      'judul': _judulController.text.trim(),
-      'konten': _kontenController.text.trim(),
-      'image_url': _uploadedImageUrl,
-      'kategori': _selectedKategori ?? '',
-      'status': isDraft ? 'draft' : _selectedStatus,
-      'tanggal': DateTime.now(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('artikel')
-        .doc(_imageFileName)
-        .set(artikelData, SetOptions(merge: true));
-
-    if (mounted) Navigator.pop(context, 'updated');
   }
 
   @override
@@ -178,200 +245,221 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              const Text(
-                'Judul Artikel',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              TextFormField(
-                controller: _judulController,
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan judul artikel',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                validator:
-                    (v) =>
-                        (v == null || v.isEmpty) ? 'Judul wajib diisi' : null,
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black45),
-                    borderRadius: BorderRadius.circular(6),
-                    color: Colors.grey[100],
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                children: [
+                  const Text(
+                    'Judul Artikel',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  child:
-                      _uploadedImageUrl != null ||
-                              _pickedImage != null ||
-                              _pickedImageBytes != null
-                          ? (kIsWeb
-                              ? (_pickedImageBytes != null
-                                  ? Image.memory(
-                                    _pickedImageBytes!,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                  )
-                                  : Image.network(
-                                    _uploadedImageUrl!,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                  ))
-                              : (_pickedImage != null
-                                  ? Image.file(
-                                    _pickedImage!,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                  )
-                                  : Image.network(
-                                    _uploadedImageUrl!,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                  )))
-                          : const Center(
-                            child: Text(
-                              '+ Unggah Gambar',
-                              style: TextStyle(color: Colors.black54),
+                  const SizedBox(height: 4),
+                  TextFormField(
+                    controller: _judulController,
+                    decoration: const InputDecoration(
+                      hintText: 'Masukkan judul artikel',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    validator:
+                        (v) =>
+                            (v == null || v.isEmpty)
+                                ? 'Judul wajib diisi'
+                                : null,
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black45),
+                        borderRadius: BorderRadius.circular(6),
+                        color: Colors.grey[100],
+                      ),
+                      child:
+                          _uploadedImageUrl != null ||
+                                  _pickedImage != null ||
+                                  _pickedImageBytes != null
+                              ? (kIsWeb
+                                  ? (_pickedImageBytes != null
+                                      ? Image.memory(
+                                        _pickedImageBytes!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Image.network(
+                                        _uploadedImageUrl!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      ))
+                                  : (_pickedImage != null
+                                      ? Image.file(
+                                        _pickedImage!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Image.network(
+                                        _uploadedImageUrl!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      )))
+                              : const Center(
+                                child: Text(
+                                  '+ Unggah Gambar',
+                                  style: TextStyle(color: Colors.black54),
+                                ),
+                              ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Konten Artikel',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  TextFormField(
+                    controller: _kontenController,
+                    minLines: 5,
+                    maxLines: null,
+                    decoration: const InputDecoration(
+                      hintText: 'Masukkan artikel',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    validator:
+                        (v) =>
+                            (v == null || v.isEmpty)
+                                ? 'Konten wajib diisi'
+                                : null,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Kategori',
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                          ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Konten Artikel',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              TextFormField(
-                controller: _kontenController,
-                minLines: 5,
-                maxLines: null,
-                decoration: const InputDecoration(
-                  hintText: 'Masukkan artikel',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                validator:
-                    (v) =>
-                        (v == null || v.isEmpty) ? 'Konten wajib diisi' : null,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Kategori',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                            const SizedBox(height: 4),
+                            DropdownButtonFormField<String>(
+                              value: _selectedKategori,
+                              items:
+                                  kategoriList
+                                      .map(
+                                        (k) => DropdownMenuItem(
+                                          value: k,
+                                          child: Text(k),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged:
+                                  (val) =>
+                                      setState(() => _selectedKategori = val),
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        DropdownButtonFormField<String>(
-                          value: _selectedKategori,
-                          items:
-                              kategoriList
-                                  .map(
-                                    (k) => DropdownMenuItem(
-                                      value: k,
-                                      child: Text(k),
-                                    ),
-                                  )
-                                  .toList(),
-                          onChanged:
-                              (val) => setState(() => _selectedKategori = val),
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Status',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Column(
+                              children:
+                                  statusList.map((s) {
+                                    return RadioListTile<String>(
+                                      value: s['value']!,
+                                      groupValue: _selectedStatus,
+                                      title: Text(s['label']!),
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      onChanged:
+                                          (v) => setState(
+                                            () => _selectedStatus = v,
+                                          ),
+                                    );
+                                  }).toList(),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Status',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed:
+                              _isLoading
+                                  ? null
+                                  : () => _simpanArtikel(isDraft: true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                          child: const Text(
+                            'Simpan Draft',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Column(
-                          children:
-                              statusList.map((s) {
-                                return RadioListTile<String>(
-                                  value: s['value']!,
-                                  groupValue: _selectedStatus,
-                                  title: Text(s['label']!),
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  onChanged:
-                                      (v) =>
-                                          setState(() => _selectedStatus = v),
-                                );
-                              }).toList(),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed:
+                              _isLoading
+                                  ? null
+                                  : () => _simpanArtikel(isDraft: false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            minimumSize: const Size.fromHeight(44),
+                          ),
+                          child: const Text(
+                            'Terbitkan',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => _simpanArtikel(isDraft: true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        minimumSize: const Size.fromHeight(44),
-                      ),
-                      child: const Text(
-                        'Simpan Draft',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => _simpanArtikel(isDraft: false),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        minimumSize: const Size.fromHeight(44),
-                      ),
-                      child: const Text(
-                        'Terbitkan',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
     );
   }
