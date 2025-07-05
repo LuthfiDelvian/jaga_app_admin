@@ -1,22 +1,29 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:jaga_app_admin/app/auth_service.dart';
 import 'package:jaga_app_admin/app/pages/auth/page/login_register_page.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
   @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  String selectedLanguage = 'id'; // default, bisa load dari storage
+
+  @override
   Widget build(BuildContext context) {
-    // Ambil data user dari Firebase Auth
     final user = authService.value.currentUser;
 
-    // Gunakan dummy jika data kosong
     final String photoUrl = user?.photoURL ?? '';
     final String nama = user?.displayName ?? 'Admin Jaga';
     final String email = user?.email ?? '-';
-    final String username = user?.email != null
-        ? '@' + (user!.email!.split('@').first)
-        : '@username';
+    final String username =
+        user?.email != null
+            ? '@${user!.email!.split('@').first}'
+            : '@username';
 
     return Scaffold(
       appBar: AppBar(
@@ -34,11 +41,17 @@ class SettingsPage extends StatelessWidget {
           CircleAvatar(
             radius: 44,
             backgroundColor: Colors.grey.shade300,
-            child: photoUrl.isNotEmpty
-                ? ClipOval(
-                    child: Image.network(photoUrl, fit: BoxFit.cover, width: 84, height: 84),
-                  )
-                : const Icon(Icons.person, color: Colors.white, size: 54),
+            child:
+                photoUrl.isNotEmpty
+                    ? ClipOval(
+                      child: Image.network(
+                        photoUrl,
+                        fit: BoxFit.cover,
+                        width: 84,
+                        height: 84,
+                      ),
+                    )
+                    : const Icon(Icons.person, color: Colors.white, size: 54),
           ),
           const SizedBox(height: 14),
           Center(
@@ -82,85 +95,110 @@ class SettingsPage extends StatelessWidget {
                     bottom: BorderSide(color: Color(0xFFF2F2F2)),
                   ),
                 ),
-                // Profil
+                // Ganti Username
                 ListTile(
-                  title: const Text('Profil'),
+                  title: const Text('Ganti Username'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // TODO: aksi edit profil
-                  },
+                  onTap: () => _showChangeUsernameDialog(context),
                   dense: true,
                   shape: const Border(
                     bottom: BorderSide(color: Color(0xFFF2F2F2)),
                   ),
                 ),
-                // Notifikasi
+                // Ganti Password
                 ListTile(
-                  title: const Text('Kelola Notifikasi'),
+                  title: const Text('Ganti Password'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // TODO: aksi kelola notifikasi
-                  },
+                  onTap: () => _showChangePasswordDialog(context),
                   dense: true,
                   shape: const Border(
                     bottom: BorderSide(color: Color(0xFFF2F2F2)),
                   ),
                 ),
-                // Bahasa
+                // Bahasa dengan dialog custom (radio)
                 ListTile(
                   title: const Text('Bahasa'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // TODO: aksi bahasa
-                  },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        selectedLanguage == 'id'
+                            ? 'Bahasa Indonesia'
+                            : 'English',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                  onTap: () => _showLanguageDialog(context),
                   dense: true,
                   shape: const Border(
                     bottom: BorderSide(color: Color(0xFFF2F2F2)),
                   ),
                 ),
-                // Tampilan
-                ListTile(
-                  title: const Text('Tampilan'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // TODO: aksi tampilan
-                  },
-                  dense: true,
-                ),
-                // Keluar
+                // Divider & Logout
                 const Divider(height: 0, thickness: 1.2),
                 ListTile(
                   title: const Text(
                     'Keluar',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   onTap: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Konfirmasi'),
-                        content: const Text('Apakah Anda yakin ingin keluar?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('Batal'),
+                      builder:
+                          (context) => AlertDialog(
+                            title: const Text('Konfirmasi'),
+                            content: const Text(
+                              'Apakah Anda yakin ingin keluar?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed:
+                                    () => Navigator.of(context).pop(false),
+                                child: const Text('Batal'),
+                              ),
+                              TextButton(
+                                onPressed:
+                                    () => Navigator.of(context).pop(true),
+                                child: const Text(
+                                  'Keluar',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('Keluar', style: TextStyle(color: Colors.red)),
-                          ),
-                        ],
-                      ),
                     );
                     if (confirm == true) {
                       await authService.value.signOut();
-                      // Setelah logout, redirect ke login/register page
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const LoginRegisterPage()),
+                        MaterialPageRoute(
+                          builder: (_) => const LoginRegisterPage(),
+                        ),
                         (route) => false,
                       );
                     }
                   },
+                  dense: true,
+                ),
+                // Divider & Hapus Akun
+                const Divider(height: 0, thickness: 1.2),
+                ListTile(
+                  title: const Text(
+                    'Hapus Akun',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () => _showDeleteAccountDialog(context, email),
                   dense: true,
                 ),
               ],
@@ -168,6 +206,221 @@ class SettingsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // ==== POPUP GANTI USERNAME ====
+  void _showChangeUsernameDialog(BuildContext context) {
+    final usernameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Ganti Username'),
+            content: TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(labelText: 'Username baru'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    await authService.value.updateUsername(
+                      newUsername: usernameController.text.trim(),
+                    );
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Username berhasil diubah')),
+                    );
+                    setState(() {}); // Refresh tampilan nama jika perlu
+                  } catch (e) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal mengubah username: $e')),
+                    );
+                  }
+                },
+                child: const Text('Simpan'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // ==== POPUP GANTI PASSWORD ====
+  void _showChangePasswordDialog(BuildContext context) {
+    final emailController = TextEditingController();
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Ganti Password'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: currentPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password Saat Ini',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Password Baru'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final email = emailController.text.trim();
+                  final currentPassword = currentPasswordController.text;
+                  final newPassword = newPasswordController.text;
+                  try {
+                    // 1. Re-authenticate user
+                    final credential = EmailAuthProvider.credential(
+                      email: email,
+                      password: currentPassword,
+                    );
+                    await authService.value.currentUser!
+                        .reauthenticateWithCredential(credential);
+                    // 2. Change password
+                    await authService.value.changePassword(
+                      newPassword: newPassword,
+                    );
+
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Password berhasil diubah')),
+                    );
+                  } catch (e) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal mengubah password: $e')),
+                    );
+                  }
+                },
+                child: const Text('Simpan'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // ==== POPUP HAPUS AKUN ====
+  void _showDeleteAccountDialog(BuildContext context, String email) {
+    final passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Hapus Akun'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Masukkan password untuk konfirmasi hapus akun:'),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    await authService.value.deleteAccount(
+                      email: email,
+                      password: passwordController.text.trim(),
+                    );
+                    Navigator.pop(context);
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) => const LoginRegisterPage(),
+                      ),
+                      (route) => false,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Akun berhasil dihapus')),
+                    );
+                  } catch (e) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal menghapus akun: $e')),
+                    );
+                  }
+                },
+                child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // ==== POPUP PILIHAN BAHASA ====
+  void _showLanguageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String tempLang = selectedLanguage;
+        return AlertDialog(
+          title: const Text('Pilih Bahasa'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                value: 'id',
+                groupValue: tempLang,
+                title: const Text('Bahasa Indonesia'),
+                onChanged: (value) {
+                  setState(() => selectedLanguage = value!);
+                  Navigator.pop(context);
+                },
+              ),
+              RadioListTile<String>(
+                value: 'en',
+                groupValue: tempLang,
+                title: const Text('English'),
+                onChanged: (value) {
+                  setState(() => selectedLanguage = value!);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

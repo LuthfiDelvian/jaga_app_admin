@@ -1,7 +1,6 @@
-import 'dart:html' as html; // Khusus untuk web
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jaga_app_admin/app/pages/dashboard/laporan/helper/download_helper_web.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_failed_page.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_saved_page.dart';
 
@@ -50,7 +49,11 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
   }
 
   Future<void> _fetchBukti() async {
-    final doc = await FirebaseFirestore.instance.collection('laporan').doc(widget.id).get();
+    final doc =
+        await FirebaseFirestore.instance
+            .collection('laporan')
+            .doc(widget.id)
+            .get();
     final data = doc.data();
     if (data != null && data['bukti'] != null) {
       setState(() {
@@ -60,13 +63,7 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
   }
 
   Future<void> _downloadFile(String url) async {
-    if (kIsWeb) {
-      html.AnchorElement anchorElement = html.AnchorElement(href: url);
-      anchorElement.download = '';
-      anchorElement.click();
-    } else {
-      // Tambahkan logika platform Android/iOS jika diperlukan
-    }
+    // downloadFile(url);
   }
 
   Widget _detailRow(String label, String? value, {bool bold = false}) {
@@ -100,36 +97,45 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: _buktiList.map((file) {
-        final String url = file['url'];
-        final String name = file['name'];
-        final String type = (file['type'] ?? '').toLowerCase();
-        final bool isImage = ['jpg', 'jpeg', 'png', 'webp'].contains(type);
+      children:
+          _buktiList.map((file) {
+            final String url = file['url'];
+            final String name = file['name'];
+            final String type = (file['type'] ?? '').toLowerCase();
+            final bool isImage = ['jpg', 'jpeg', 'png', 'webp'].contains(type);
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: isImage
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(url, height: 160, fit: BoxFit.cover),
-                    ),
-                  ],
-                )
-              : ListTile(
-                  leading: const Icon(Icons.insert_drive_file),
-                  title: Text(name, overflow: TextOverflow.ellipsis),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.download),
-                    onPressed: () => _downloadFile(url),
-                  ),
-                ),
-        );
-      }).toList(),
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child:
+                  isImage
+                      ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              url,
+                              height: 160,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ],
+                      )
+                      : ListTile(
+                        leading: const Icon(Icons.insert_drive_file),
+                        title: Text(name, overflow: TextOverflow.ellipsis),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.download),
+                          onPressed: () => _downloadFile(url),
+                        ),
+                      ),
+            );
+          }).toList(),
     );
   }
 
@@ -153,7 +159,9 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => StatusFailedPage(errorMessage: e.toString())),
+          MaterialPageRoute(
+            builder: (_) => StatusFailedPage(errorMessage: e.toString()),
+          ),
         );
       }
     }
@@ -163,7 +171,11 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Image.asset('assets/images/jaga-icon.png', color: Colors.white, height: 85),
+        title: Image.asset(
+          'assets/images/jaga-icon.png',
+          color: Colors.white,
+          height: 85,
+        ),
         backgroundColor: Colors.red,
         iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
@@ -172,45 +184,72 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
-            Text(widget.id, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
+            Text(
+              widget.id,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(widget.judul, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                widget.judul,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             _detailRow('Tanggal', widget.tanggal),
             _detailRow('Lokasi', widget.lokasi),
             _detailRow('Instansi\nTujuan', widget.instansi),
             _detailRow('Isi\nLaporan', widget.isiLaporan),
             const SizedBox(height: 16),
-            const Text('Bukti Terlampir', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Bukti Terlampir',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             _buildBuktiList(),
             const SizedBox(height: 24),
-            const Text('Pilih Status Laporan', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Pilih Status Laporan',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _selectedStatus,
               decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(),
               ),
-              items: _statusList.map((item) {
-                return DropdownMenuItem(
-                  value: item['value'],
-                  child: Text(item['label']!),
-                );
-              }).toList(),
-              onChanged: (val) => setState(() => _selectedStatus = val ?? _selectedStatus),
+              items:
+                  _statusList.map((item) {
+                    return DropdownMenuItem(
+                      value: item['value'],
+                      child: Text(item['label']!),
+                    );
+                  }).toList(),
+              onChanged:
+                  (val) =>
+                      setState(() => _selectedStatus = val ?? _selectedStatus),
             ),
             const SizedBox(height: 16),
-            const Text('Catatan Verifikasi [opsional]', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Catatan Verifikasi [opsional]',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _catatanController,
               decoration: const InputDecoration(
                 hintText: 'Catatan Verifikasi',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
               ),
               maxLines: 3,
             ),
@@ -223,9 +262,14 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: const Text('Simpan Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Simpan Status',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],

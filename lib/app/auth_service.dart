@@ -46,4 +46,31 @@ class AuthService {
     await currentUser!.delete();
     await firebaseAuth.signOut();
   }
+
+  Future<void> changePassword({
+    required String newPassword,
+  }) async {
+    if (currentUser != null) {
+      await currentUser!.updatePassword(newPassword);
+    } else {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'User not logged in.',
+      );
+    }
+  }
+
+  Future<void> updateUsername({
+    required String newUsername,
+  }) async {
+    if (currentUser != null) {
+      await currentUser!.updateDisplayName(newUsername);
+      await currentUser!.reload();
+    } else {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'User not logged in.',
+      );
+    }
+  }
 }
