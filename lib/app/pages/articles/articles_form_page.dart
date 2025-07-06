@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:jaga_app_admin/app/fcm_helper.dart';
 
 class ArticleFormPage extends StatefulWidget {
   final bool isEdit;
@@ -22,17 +23,16 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   final TextEditingController _judulController = TextEditingController();
   final TextEditingController _kontenController = TextEditingController();
 
-  File? _pickedImage; // for mobile
-  Uint8List? _pickedImageBytes; // for web
+  File? _pickedImage;
+  Uint8List? _pickedImageBytes;
   String? _pickedImageName;
-
-  String? _uploadedImageUrl; // url gambar Cloudinary
-  String? _imageFileName; // public_id di Cloudinary, juga id dokumen Firestore
+  String? _uploadedImageUrl;
+  String? _imageFileName;
 
   String? _selectedKategori;
   String? _selectedStatus = 'draft';
 
-  bool _isLoading = false; // <-- Tambahan loading state
+  bool _isLoading = false;
 
   final List<String> kategoriList = [
     'Pilih',
@@ -54,7 +54,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
       _judulController.text = d['judul'] ?? '';
       _kontenController.text = d['konten'] ?? '';
       _uploadedImageUrl = d['image_url'];
-      _imageFileName = d['id']; // id dokumen Firestore
+      _imageFileName = d['id'];
       _selectedKategori = d['kategori'];
       _selectedStatus = d['status'];
     }
@@ -94,10 +94,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     final url = Uri.parse(
       'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
     );
-    final request =
-        http.MultipartRequest('POST', url)
-          ..fields['upload_preset'] = uploadPreset
-          ..fields['public_id'] = fileName;
+    final request = http.MultipartRequest('POST', url)
+      ..fields['upload_preset'] = uploadPreset
+      ..fields['public_id'] = fileName;
 
     if (kIsWeb && _pickedImageBytes != null && _pickedImageName != null) {
       request.files.add(
@@ -132,19 +131,15 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   Future<void> _simpanArtikel({required bool isDraft}) async {
     try {
       if (!_formKey.currentState!.validate()) return;
-
       setState(() => _isLoading = true);
 
-      // Upload image jika ada yang dipilih
       if ((_pickedImage != null || _pickedImageBytes != null)) {
         final result = await _uploadImageToCloudinary();
         if (!result) {
           if (mounted) {
             setState(() => _isLoading = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Gagal upload gambar ke Cloudinary'),
-              ),
+              const SnackBar(content: Text('Gagal upload gambar ke Cloudinary')),
             );
           }
           return;
@@ -190,11 +185,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           final data = userDoc.data();
           final userUid = data['id'] ?? data['username'];
           final userRole = data['role'] ?? '';
+          final fcmToken = data['fcm_token'];
 
-          if (userRole != 'user') continue;
-
-          if (userUid == null) continue;
-
+          if (userRole != 'user' || fcmToken == null || fcmToken.isEmpty) continue;
           final notifRef = firestore.collection('notifikasi').doc();
           batch.set(notifRef, {
             'userId': userUid,
@@ -204,6 +197,17 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
             'type': 'artikel',
           });
           batchCounter++;
+
+          // Kirim FCM satu per satu
+          await sendFcmToToken(
+            fcmToken,
+            'Artikel Baru',
+            'Ada artikel baru: ${_judulController.text.trim()}',
+            data: {
+              'artikelId': _imageFileName ?? '',
+              'type': 'artikel',
+            },
+          );
 
           // Commit batch setiap 450 dokumen
           if (batchCounter == 450) {
@@ -265,11 +269,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    validator:
-                        (v) =>
-                            (v == null || v.isEmpty)
-                                ? 'Judul wajib diisi'
-                                : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Judul wajib diisi' : null,
                   ),
                   const SizedBox(height: 8),
                   GestureDetector(
@@ -282,39 +283,38 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                         borderRadius: BorderRadius.circular(6),
                         color: Colors.grey[100],
                       ),
-                      child:
-                          _uploadedImageUrl != null ||
-                                  _pickedImage != null ||
-                                  _pickedImageBytes != null
-                              ? (kIsWeb
-                                  ? (_pickedImageBytes != null
-                                      ? Image.memory(
-                                        _pickedImageBytes!,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : Image.network(
-                                        _uploadedImageUrl!,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      ))
-                                  : (_pickedImage != null
-                                      ? Image.file(
-                                        _pickedImage!,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : Image.network(
-                                        _uploadedImageUrl!,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      )))
-                              : const Center(
-                                child: Text(
-                                  '+ Unggah Gambar',
-                                  style: TextStyle(color: Colors.black54),
-                                ),
+                      child: _uploadedImageUrl != null ||
+                              _pickedImage != null ||
+                              _pickedImageBytes != null
+                          ? (kIsWeb
+                              ? (_pickedImageBytes != null
+                                  ? Image.memory(
+                                      _pickedImageBytes!,
+                                      height: 120,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.network(
+                                      _uploadedImageUrl!,
+                                      height: 120,
+                                      fit: BoxFit.cover,
+                                    ))
+                              : (_pickedImage != null
+                                  ? Image.file(
+                                      _pickedImage!,
+                                      height: 120,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.network(
+                                      _uploadedImageUrl!,
+                                      height: 120,
+                                      fit: BoxFit.cover,
+                                    )))
+                          : const Center(
+                              child: Text(
+                                '+ Unggah Gambar',
+                                style: TextStyle(color: Colors.black54),
                               ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -332,11 +332,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    validator:
-                        (v) =>
-                            (v == null || v.isEmpty)
-                                ? 'Konten wajib diisi'
-                                : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Konten wajib diisi' : null,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -352,18 +349,16 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
                               value: _selectedKategori,
-                              items:
-                                  kategoriList
-                                      .map(
-                                        (k) => DropdownMenuItem(
-                                          value: k,
-                                          child: Text(k),
-                                        ),
-                                      )
-                                      .toList(),
+                              items: kategoriList
+                                  .map(
+                                    (k) => DropdownMenuItem(
+                                      value: k,
+                                      child: Text(k),
+                                    ),
+                                  )
+                                  .toList(),
                               onChanged:
-                                  (val) =>
-                                      setState(() => _selectedKategori = val),
+                                  (val) => setState(() => _selectedKategori = val),
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 isDense: true,
@@ -383,20 +378,17 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                             ),
                             const SizedBox(height: 4),
                             Column(
-                              children:
-                                  statusList.map((s) {
-                                    return RadioListTile<String>(
-                                      value: s['value']!,
-                                      groupValue: _selectedStatus,
-                                      title: Text(s['label']!),
-                                      dense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      onChanged:
-                                          (v) => setState(
-                                            () => _selectedStatus = v,
-                                          ),
-                                    );
-                                  }).toList(),
+                              children: statusList.map((s) {
+                                return RadioListTile<String>(
+                                  value: s['value']!,
+                                  groupValue: _selectedStatus,
+                                  title: Text(s['label']!),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  onChanged: (v) =>
+                                      setState(() => _selectedStatus = v),
+                                );
+                              }).toList(),
                             ),
                           ],
                         ),
@@ -408,10 +400,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed:
-                              _isLoading
-                                  ? null
-                                  : () => _simpanArtikel(isDraft: true),
+                          onPressed: _isLoading
+                              ? null
+                              : () => _simpanArtikel(isDraft: true),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.red,
@@ -430,10 +421,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed:
-                              _isLoading
-                                  ? null
-                                  : () => _simpanArtikel(isDraft: false),
+                          onPressed: _isLoading
+                              ? null
+                              : () => _simpanArtikel(isDraft: false),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,

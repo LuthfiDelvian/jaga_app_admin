@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:jaga_app_admin/app/pages/dashboard/laporan/helper/download_helper_web.dart';
+import 'package:jaga_app_admin/app/fcm_helper.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_failed_page.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_saved_page.dart';
 
@@ -49,11 +49,10 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
   }
 
   Future<void> _fetchBukti() async {
-    final doc =
-        await FirebaseFirestore.instance
-            .collection('laporan')
-            .doc(widget.id)
-            .get();
+    final doc = await FirebaseFirestore.instance
+        .collection('laporan')
+        .doc(widget.id)
+        .get();
     final data = doc.data();
     if (data != null && data['bukti'] != null) {
       setState(() {
@@ -97,53 +96,50 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children:
-          _buktiList.map((file) {
-            final String url = file['url'];
-            final String name = file['name'];
-            final String type = (file['type'] ?? '').toLowerCase();
-            final bool isImage = ['jpg', 'jpeg', 'png', 'webp'].contains(type);
+      children: _buktiList.map((file) {
+        final String url = file['url'];
+        final String name = file['name'];
+        final String type = (file['type'] ?? '').toLowerCase();
+        final bool isImage = ['jpg', 'jpeg', 'png', 'webp'].contains(type);
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child:
-                  isImage
-                      ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              url,
-                              height: 160,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ],
-                      )
-                      : ListTile(
-                        leading: const Icon(Icons.insert_drive_file),
-                        title: Text(name, overflow: TextOverflow.ellipsis),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.download),
-                          onPressed: () => _downloadFile(url),
-                        ),
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: isImage
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        url,
+                        height: 160,
+                        fit: BoxFit.cover,
                       ),
-            );
-          }).toList(),
+                    ),
+                  ],
+                )
+              : ListTile(
+                  leading: const Icon(Icons.insert_drive_file),
+                  title: Text(name, overflow: TextOverflow.ellipsis),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.download),
+                    onPressed: () => _downloadFile(url),
+                  ),
+                ),
+        );
+      }).toList(),
     );
   }
 
   Future<void> _simpanStatus() async {
     try {
-      final laporanRef = FirebaseFirestore.instance
-          .collection('laporan')
-          .doc(widget.id);
+      final laporanRef =
+          FirebaseFirestore.instance.collection('laporan').doc(widget.id);
       final laporanDoc = await laporanRef.get();
       final laporanData = laporanDoc.data();
       final userId = laporanData?['uid'];
@@ -163,12 +159,33 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
           'laporanId': widget.id,
           'type': 'laporan',
         });
+
+        // Kirim FCM ke pelapor
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+        final fcmToken = userDoc.data()?['fcm_token'];
+
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          await sendFcmToToken(
+            fcmToken,
+            'Status Laporan Diperbarui',
+            'Status laporan "${widget.judul}" sekarang $_selectedStatus',
+            data: {
+              'laporanId': widget.id,
+              'type': 'laporan',
+            },
+          );
+        }
       }
 
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const StatusSavedPage()),
+          MaterialPageRoute(
+            builder: (_) => const StatusSavedPage(),
+          ),
         );
       }
     } catch (e) {
@@ -240,16 +257,14 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
                 ),
                 border: OutlineInputBorder(),
               ),
-              items:
-                  _statusList.map((item) {
-                    return DropdownMenuItem(
-                      value: item['value'],
-                      child: Text(item['label']!),
-                    );
-                  }).toList(),
-              onChanged:
-                  (val) =>
-                      setState(() => _selectedStatus = val ?? _selectedStatus),
+              items: _statusList.map((item) {
+                return DropdownMenuItem(
+                  value: item['value'],
+                  child: Text(item['label']!),
+                );
+              }).toList(),
+              onChanged: (val) =>
+                  setState(() => _selectedStatus = val ?? _selectedStatus),
             ),
             const SizedBox(height: 16),
             const Text(
