@@ -9,16 +9,29 @@ Future<void> sendFcmToToken(
   String body, {
   Map<String, dynamic>? data,
 }) async {
+  final bodyData = {
+    'fcmToken': fcmToken,
+    'title': title,
+    'body': body,
+    'data': data ?? {},
+  };
+  print('PAYLOAD DARI FLUTTER: ${jsonEncode(bodyData)}');
   final response = await http.post(
     Uri.parse(apiUrl),
     headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({
-      'fcmToken': fcmToken,
-      'title': title,
-      'body': body,
-      'data': data ?? {},
-    }),
+    body: jsonEncode(bodyData),
   );
+
+  // final response = await http.post(
+  //   Uri.parse(apiUrl),
+  //   headers: {'Content-Type': 'application/json'},
+  //   body: jsonEncode({
+  //     'fcmToken': fcmToken,
+  //     'title': title,
+  //     'body': body,
+  //     'data': data ?? {},
+  //   }),
+  // );
   if (response.statusCode != 200) {
     print('API ERROR: ${response.body}');
   } else {

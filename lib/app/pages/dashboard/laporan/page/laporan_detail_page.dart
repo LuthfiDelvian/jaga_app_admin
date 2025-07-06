@@ -177,6 +177,7 @@ class _LaporanDetailPageState extends State<LaporanDetailPage> {
               'type': 'laporan',
             },
           );
+          print('Token user laporan: $fcmToken');
         }
       }
 
