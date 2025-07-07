@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:jaga_app_admin/app/auth_service.dart';
+import 'package:jaga_app_admin/app/services/auth_service.dart';
 import 'package:jaga_app_admin/app/pages/auth/page/login_register_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -11,7 +11,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String selectedLanguage = 'id'; // default, bisa load dari storage
+  String selectedLanguage = 'id';
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +21,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final String nama = user?.displayName ?? 'Admin Jaga';
     final String email = user?.email ?? '-';
     final String username =
-        user?.email != null
-            ? '@${user!.email!.split('@').first}'
-            : '@username';
+        user?.email != null ? '@${user!.email!.split('@').first}' : '@username';
 
     return Scaffold(
       appBar: AppBar(
@@ -315,7 +313,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   } catch (e) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Gagal mengubah password: $e')),
+                      SnackBar(content: Text('Gagal mengubah password : Email/Password yang anda masukkan salah!')),
                     );
                   }
                 },
@@ -329,56 +327,104 @@ class _SettingsPageState extends State<SettingsPage> {
   // ==== POPUP HAPUS AKUN ====
   void _showDeleteAccountDialog(BuildContext context, String email) {
     final passwordController = TextEditingController();
+
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Hapus Akun'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Masukkan password untuk konfirmasi hapus akun:'),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Hapus Akun'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Masukkan password untuk konfirmasi hapus akun:'),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Password'),
+                    onChanged:
+                        (_) => setState(() {}), // untuk refresh state tombol
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Batal'),
+                ),
+                TextButton(
+                  onPressed:
+                      passwordController.text.trim().isEmpty
+                          ? null
+                          : () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder:
+                                  (context) => AlertDialog(
+                                    title: const Text('Konfirmasi Hapus Akun'),
+                                    content: const Text(
+                                      'Apakah Anda benar-benar yakin ingin menghapus akun Anda? Tindakan ini tidak bisa dibatalkan.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(context, false),
+                                        child: const Text('Batal'),
+                                      ),
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(context, true),
+                                        child: const Text(
+                                          'Ya, Hapus',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                            );
+
+                            if (confirm == true) {
+                              try {
+                                await authService.value.deleteAccount(
+                                  email: email,
+                                  password: passwordController.text.trim(),
+                                );
+                                Navigator.pop(context); // tutup dialog
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginRegisterPage(),
+                                  ),
+                                  (route) => false,
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Akun berhasil dihapus'),
+                                  ),
+                                );
+                              } catch (e) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Password yang anda masukkan salah',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                  child: const Text(
+                    'Hapus',
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Batal'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  try {
-                    await authService.value.deleteAccount(
-                      email: email,
-                      password: passwordController.text.trim(),
-                    );
-                    Navigator.pop(context);
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (_) => const LoginRegisterPage(),
-                      ),
-                      (route) => false,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Akun berhasil dihapus')),
-                    );
-                  } catch (e) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Gagal menghapus akun: $e')),
-                    );
-                  }
-                },
-                child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
+            );
+          },
+        );
+      },
     );
   }
 

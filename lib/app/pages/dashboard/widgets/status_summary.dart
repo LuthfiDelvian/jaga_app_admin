@@ -31,7 +31,7 @@ class StatusSummaryRow extends StatelessWidget {
         const SizedBox(width: 8),
         buildStatusCard(
           '${counts['ditolak']}',
-          'Laporan Ditolak',
+          'Ditolak',
           Colors.red,
           () => onTap('ditolak'),
         ),

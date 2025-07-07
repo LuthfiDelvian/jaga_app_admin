@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jaga_app_admin/app/layout/main_drawer.dart';
 import 'package:jaga_app_admin/app/pages/articles/articles_page.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/dashboard_page.dart';
+import 'package:jaga_app_admin/app/pages/laporan/page/laporan_page.dart';
 import 'package:jaga_app_admin/app/pages/settings/settings_page.dart';
 
 class MainShell extends StatefulWidget {

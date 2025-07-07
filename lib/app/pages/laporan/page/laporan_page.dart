@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/laporan_card.dart';
-import 'laporan/page/laporan_detail_page.dart';
-import 'laporan/page/filtered_laporan_page.dart';
-import 'widgets/filter_drawer.dart';
-import 'widgets/status_summary.dart';
-import 'utils/format_tanggal.dart';
+import 'package:jaga_app_admin/app/pages/laporan/widgets/laporan_card.dart';
+import 'laporan_detail_page.dart';
+import 'filtered_laporan_page.dart';
+import '../../dashboard/widgets/status_summary.dart';
+import '../../dashboard/utils/format_tanggal.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -105,10 +104,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   'Daftar Laporan',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.filter_alt),
-                onPressed: () => showFilterDrawer(context),
               ),
             ],
           ),

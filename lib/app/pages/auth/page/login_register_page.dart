@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jaga_app_admin/app/auth_service.dart';
+import 'package:jaga_app_admin/app/services/auth_service.dart';
 
 import 'package:jaga_app_admin/app/layout/main_shell.dart';
+import 'package:jaga_app_admin/app/pages/auth/page/forgot_password_page.dart';
 
 class LoginRegisterPage extends StatefulWidget {
   const LoginRegisterPage({super.key});
@@ -56,24 +57,37 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
         password: passwordLoginController.text.trim(),
       );
       // Cek role di Firestore
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .get();
       if (doc.exists && doc.data()?['role'] == 'admin') {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainShell()),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login berhasil!')));
+
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
       } else {
         await authService.value.signOut();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Akun ini bukan admin!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Akun ini bukan admin!')));
       }
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Gagal login')),
-      );
+      String errorMessage = 'Email atau password salah!';
+
+      if (e.code == 'invalid-email') {
+        errorMessage = 'Format email tidak valid.';
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -90,7 +104,8 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
       );
       return;
     }
-    if (passwordRegisterController.text != confirmPasswordRegisterController.text) {
+    if (passwordRegisterController.text !=
+        confirmPasswordRegisterController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Konfirmasi password tidak sama!')),
       );
@@ -102,32 +117,49 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
       );
       return;
     }
+
     setState(() => _isLoading = true);
     try {
       final userCredential = await authService.value.createAccount(
         email: emailRegisterController.text.trim(),
         password: passwordRegisterController.text.trim(),
       );
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
           .set({
-        'email': emailRegisterController.text.trim(),
-        'username': usernameRegisterController.text.trim(),
-        'role': 'admin',
-        'created_at': FieldValue.serverTimestamp(),
-      });
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainShell()),
+            'email': emailRegisterController.text.trim(),
+            'username': usernameRegisterController.text.trim(),
+            'role': 'admin',
+            'created_at': FieldValue.serverTimestamp(),
+          });
+
+      // Setelah berhasil daftar:
+      // 1. Logout user yang baru register (agar tidak auto-login)
+      await authService.value.signOut();
+
+      // 2. Bersihkan field register
+      usernameRegisterController.clear();
+      emailRegisterController.clear();
+      passwordRegisterController.clear();
+      confirmPasswordRegisterController.clear();
+
+      // 3. Kembali ke tab login
+      _tabController.animateTo(0);
+
+      // 4. Tampilkan snackbar sukses
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registrasi berhasil! Silakan login.')),
       );
     } on FirebaseAuthException catch (e) {
       String error = 'Gagal daftar';
       if (e.code == 'email-already-in-use') {
         error = 'Email sudah terdaftar';
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -142,8 +174,9 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
       return;
     }
     try {
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: emailLoginController.text.trim());
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: emailLoginController.text.trim(),
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Link reset dikirim ke email!')),
       );
@@ -224,7 +257,20 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 5),
                                 child: GestureDetector(
-                                  onTap: _isLoading ? null : resetPassword,
+                                  onTap:
+                                      _isLoading
+                                          ? null
+                                          : () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder:
+                                                    (_) =>
+                                                        const ForgotPasswordPage(),
+                                              ),
+                                            );
+                                          },
+
                                   child: const Text(
                                     'Lupa kata sandi?',
                                     style: TextStyle(color: Colors.grey),
@@ -239,12 +285,15 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
                                 backgroundColor: Colors.red,
                                 minimumSize: const Size.fromHeight(45),
                               ),
-                              child: _isLoading
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text(
-                                      'Masuk',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
+                              child:
+                                  _isLoading
+                                      ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                      : const Text(
+                                        'Masuk',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
                             ),
                             const SizedBox(height: 15),
                             Row(
@@ -346,12 +395,15 @@ class _LoginRegisterPageState extends State<LoginRegisterPage>
                                 backgroundColor: Colors.red,
                                 minimumSize: const Size.fromHeight(45),
                               ),
-                              child: _isLoading
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text(
-                                      'Daftar',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
+                              child:
+                                  _isLoading
+                                      ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                      : const Text(
+                                        'Daftar',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
                             ),
                             const SizedBox(height: 15),
                             Row(

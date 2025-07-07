@@ -86,8 +86,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   Future<bool> _uploadImageToCloudinary() async {
     if (_pickedImage == null && _pickedImageBytes == null) return false;
 
-    final cloudName = 'dp0iysyni'; // GANTI sesuai Cloudinary kamu
-    final uploadPreset = 'jaga_articles'; // GANTI sesuai Cloudinary kamu
+    final cloudName = 'dp0iysyni'; 
+    final uploadPreset = 'jaga_articles'; 
     final fileName =
         _imageFileName ?? DateTime.now().millisecondsSinceEpoch.toString();
 

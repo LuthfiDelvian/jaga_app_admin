@@ -1,9 +1,7 @@
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jaga_app_admin/app/pages/articles/articles_form_page.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:jaga_app_admin/app/pages/articles/cloudinary_helper.dart';
 
 class ArticlesPage extends StatelessWidget {
   const ArticlesPage({super.key});
@@ -202,75 +200,20 @@ class ArticlesPage extends StatelessWidget {
                                   );
 
                                   if (confirm == true) {
-                                    final imageUrl = data['image_url'];
-                                    if (imageUrl != null &&
-                                        imageUrl.toString().contains(
-                                          'cloudinary.com',
-                                        )) {
-                                      try {
-                                        final uri = Uri.parse(imageUrl);
-                                        final segments = uri.pathSegments;
-                                        final fileName = segments.last;
-                                        final folderIndex =
-                                            segments.indexOf('upload') + 1;
-                                        final publicIdSegments = segments
-                                          .sublist(
-                                            folderIndex,
-                                            segments.length - 1,
-                                          )..add(fileName.split('.').first);
-                                        final publicId = publicIdSegments.join(
-                                          '/',
-                                        );
+                                    final publicId = data['id'];
 
-                                        const cloudName = 'dp0iysyni';
-                                        const apiKey = 'CLOUDINARY_API_KEY';
-                                        const apiSecret =
-                                            'CLOUDINARY_API_SECRET';
-
-                                        final timestamp =
-                                            DateTime.now()
-                                                .millisecondsSinceEpoch ~/
-                                            1000;
-                                        final signatureString =
-                                            'public_id=$publicId&timestamp=$timestamp$apiSecret';
-                                        final signature =
-                                            sha1
-                                                .convert(
-                                                  utf8.encode(signatureString),
-                                                )
-                                                .toString();
-
-                                        final deleteResponse = await http.post(
-                                          Uri.parse(
-                                            'https://api.cloudinary.com/v1_1/$cloudName/image/destroy',
-                                          ),
-                                          body: {
-                                            'public_id': publicId,
-                                            'api_key': apiKey,
-                                            'timestamp': '$timestamp',
-                                            'signature': signature,
-                                          },
+                                    final success =
+                                        await CloudinaryHelper.deleteImage(
+                                          publicId,
                                         );
-
-                                        final deleteResult = json.decode(
-                                          deleteResponse.body,
-                                        );
-                                        if (deleteResult['result'] != 'ok') {
-                                          debugPrint(
-                                            'Gagal hapus gambar Cloudinary: ${deleteResult['result']}',
-                                          );
-                                        }
-                                      } catch (e) {
-                                        debugPrint(
-                                          'Error hapus Cloudinary: $e',
-                                        );
-                                      }
+                                    if (!success) {
+                                      debugPrint(
+                                        'Gagal hapus gambar Cloudinary',
+                                      );
                                     }
-
-                                    // Hapus dokumen
+                                    
                                     await doc.reference.delete();
 
-                                    // Tampilkan snackbar
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(
                                         context,

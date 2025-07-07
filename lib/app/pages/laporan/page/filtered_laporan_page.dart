@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/laporan_detail_page.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/laporan_card.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/status_color.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/widgets/title_card.dart';
+import 'package:jaga_app_admin/app/pages/laporan/page/laporan_detail_page.dart';
+import 'package:jaga_app_admin/app/pages/laporan/widgets/laporan_card.dart';
+import 'package:jaga_app_admin/app/pages/laporan/widgets/status_color.dart';
+import 'package:jaga_app_admin/app/pages/laporan/widgets/title_card.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/utils/format_tanggal.dart';
 
 class FilteredLaporanPage extends StatelessWidget {

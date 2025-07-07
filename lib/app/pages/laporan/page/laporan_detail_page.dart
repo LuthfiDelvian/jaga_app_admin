@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jaga_app_admin/app/fcm_helper.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_failed_page.dart';
-import 'package:jaga_app_admin/app/pages/dashboard/laporan/page/status_saved_page.dart';
+import 'package:jaga_app_admin/app/pages/laporan/page/status_failed_page.dart';
+import 'package:jaga_app_admin/app/pages/laporan/page/status_saved_page.dart';
 
 class LaporanDetailPage extends StatefulWidget {
   final String id;
