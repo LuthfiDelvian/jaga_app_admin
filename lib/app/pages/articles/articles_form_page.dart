@@ -183,7 +183,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
 
         for (final userDoc in usersSnapshot.docs) {
           final data = userDoc.data();
-          final userUid = data['id'] ?? data['username'];
+          final userUid = userDoc.id;
           final userRole = data['role'] ?? '';
           final fcmToken = data['fcm_token'];
 
