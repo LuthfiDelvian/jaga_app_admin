@@ -12,7 +12,7 @@ Widget buildStatusCard(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -22,11 +22,11 @@ Widget buildStatusCard(
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: color,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(color: color)),
+            Text(label, style: TextStyle(color: Colors.white)),
           ],
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jaga_app_admin/app/pages/laporan/page/laporan_detail_page.dart';
 import 'package:jaga_app_admin/app/pages/laporan/widgets/laporan_card.dart';
+import 'package:jaga_app_admin/app/pages/laporan/widgets/laporan_line_chart.dart';
 import 'package:jaga_app_admin/app/pages/laporan/widgets/status_color.dart';
 import 'package:jaga_app_admin/app/pages/laporan/widgets/title_card.dart';
 import 'package:jaga_app_admin/app/pages/dashboard/utils/format_tanggal.dart';
@@ -32,6 +33,10 @@ class FilteredLaporanPage extends StatelessWidget {
       body: Column(
         children: [
           buildTitleCard(title, getStatusColor(title)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: LaporanLineChart(statusList: statusList),
+          ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream:

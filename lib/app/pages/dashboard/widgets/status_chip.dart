@@ -18,9 +18,9 @@ Widget buildStatusChip(String status) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.2),
+      color: color,
       borderRadius: BorderRadius.circular(8),
     ),
-    child: Text(status, style: TextStyle(color: color)),
+    child: Text(status, style: TextStyle(color: Colors.white)),
   );
 }

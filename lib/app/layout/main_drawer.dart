@@ -13,10 +13,10 @@ class MainDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 250, // Lebar drawer yang lebih kecil (default biasanya ~304)
+      width: 250,
       child: Drawer(
         child: Container(
-          color: Colors.red, // Warna dasar drawer
+          color: Colors.red,
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
@@ -33,6 +33,7 @@ class MainDrawer extends StatelessWidget {
                 ),
               ),
               _buildDrawerItem('Dashboard', 0),
+              _buildDrawerItem('Laporan', 1),
               _buildDrawerItem('Artikel', 2),
               _buildDrawerItem('Pengaturan', 3),
             ],

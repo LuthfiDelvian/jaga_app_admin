@@ -30,7 +30,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   String? _imageFileName;
 
   String? _selectedKategori;
-  String? _selectedStatus = 'draft';
+  // ignore: unused_field
+  String? _selectedStatus;
 
   bool _isLoading = false;
 
@@ -43,7 +44,6 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   final List<Map<String, String>> statusList = [
     {'value': 'draft', 'label': 'Draft'},
     {'value': 'terbit', 'label': 'Terbitkan'},
-    {'value': 'jadwalkan', 'label': 'Dijadwalkan'},
   ];
 
   @override
@@ -86,17 +86,18 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   Future<bool> _uploadImageToCloudinary() async {
     if (_pickedImage == null && _pickedImageBytes == null) return false;
 
-    final cloudName = 'dp0iysyni'; 
-    final uploadPreset = 'jaga_articles'; 
+    final cloudName = 'dp0iysyni';
+    final uploadPreset = 'jaga_articles';
     final fileName =
         _imageFileName ?? DateTime.now().millisecondsSinceEpoch.toString();
 
     final url = Uri.parse(
       'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
     );
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = uploadPreset
-      ..fields['public_id'] = fileName;
+    final request =
+        http.MultipartRequest('POST', url)
+          ..fields['upload_preset'] = uploadPreset
+          ..fields['public_id'] = fileName;
 
     if (kIsWeb && _pickedImageBytes != null && _pickedImageName != null) {
       request.files.add(
@@ -139,7 +140,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           if (mounted) {
             setState(() => _isLoading = false);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Gagal upload gambar ke Cloudinary')),
+              const SnackBar(
+                content: Text('Gagal upload gambar ke Cloudinary'),
+              ),
             );
           }
           return;
@@ -162,7 +165,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         'konten': _kontenController.text.trim(),
         'image_url': _uploadedImageUrl,
         'kategori': _selectedKategori ?? '',
-        'status': isDraft ? 'draft' : _selectedStatus,
+        'status': isDraft ? 'draft' : 'terbit',
         'tanggal': DateTime.now(),
       };
 
@@ -172,9 +175,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           .doc(_imageFileName)
           .set(artikelData, SetOptions(merge: true));
 
-      // Notifikasi: hanya buat jika status bukan draft
-      if (!isDraft &&
-          (_selectedStatus == 'terbit' || _selectedStatus == 'terbitkan')) {
+      // Notifikasi: hanya buat jika status terbit
+      if (!isDraft) {
         final firestore = FirebaseFirestore.instance;
         final usersSnapshot = await firestore.collection('users').get();
 
@@ -187,7 +189,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           final userRole = data['role'] ?? '';
           final fcmToken = data['fcm_token'];
 
-          if (userRole != 'user' || fcmToken == null || fcmToken.isEmpty) continue;
+          if (userRole != 'user' || fcmToken == null || fcmToken.isEmpty)
+            continue;
           final notifRef = firestore.collection('notifikasi').doc();
           batch.set(notifRef, {
             'userId': userUid,
@@ -203,10 +206,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
             fcmToken,
             'Artikel Baru',
             'Ada artikel baru: ${_judulController.text.trim()}',
-            data: {
-              'artikelId': _imageFileName ?? '',
-              'type': 'artikel',
-            },
+            data: {'artikelId': _imageFileName ?? '', 'type': 'artikel'},
           );
 
           // Commit batch setiap 450 dokumen
@@ -223,7 +223,12 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
 
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.pop(context, 'updated');
+        // Implementasi pop value sesuai tombol
+        if (isDraft) {
+          Navigator.pop(context, 'draft');
+        } else {
+          Navigator.pop(context, 'published');
+        }
       }
     } catch (e, stack) {
       debugPrint('Error di _simpanArtikel: $e');
@@ -269,8 +274,11 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Judul wajib diisi' : null,
+                    validator:
+                        (v) =>
+                            (v == null || v.isEmpty)
+                                ? 'Judul wajib diisi'
+                                : null,
                   ),
                   const SizedBox(height: 8),
                   GestureDetector(
@@ -283,38 +291,39 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                         borderRadius: BorderRadius.circular(6),
                         color: Colors.grey[100],
                       ),
-                      child: _uploadedImageUrl != null ||
-                              _pickedImage != null ||
-                              _pickedImageBytes != null
-                          ? (kIsWeb
-                              ? (_pickedImageBytes != null
-                                  ? Image.memory(
-                                      _pickedImageBytes!,
-                                      height: 120,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.network(
-                                      _uploadedImageUrl!,
-                                      height: 120,
-                                      fit: BoxFit.cover,
-                                    ))
-                              : (_pickedImage != null
-                                  ? Image.file(
-                                      _pickedImage!,
-                                      height: 120,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.network(
-                                      _uploadedImageUrl!,
-                                      height: 120,
-                                      fit: BoxFit.cover,
-                                    )))
-                          : const Center(
-                              child: Text(
-                                '+ Unggah Gambar',
-                                style: TextStyle(color: Colors.black54),
+                      child:
+                          _uploadedImageUrl != null ||
+                                  _pickedImage != null ||
+                                  _pickedImageBytes != null
+                              ? (kIsWeb
+                                  ? (_pickedImageBytes != null
+                                      ? Image.memory(
+                                        _pickedImageBytes!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Image.network(
+                                        _uploadedImageUrl!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      ))
+                                  : (_pickedImage != null
+                                      ? Image.file(
+                                        _pickedImage!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Image.network(
+                                        _uploadedImageUrl!,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                      )))
+                              : const Center(
+                                child: Text(
+                                  '+ Unggah Gambar',
+                                  style: TextStyle(color: Colors.black54),
+                                ),
                               ),
-                            ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -332,8 +341,11 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Konten wajib diisi' : null,
+                    validator:
+                        (v) =>
+                            (v == null || v.isEmpty)
+                                ? 'Konten wajib diisi'
+                                : null,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -349,16 +361,18 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                             const SizedBox(height: 4),
                             DropdownButtonFormField<String>(
                               value: _selectedKategori,
-                              items: kategoriList
-                                  .map(
-                                    (k) => DropdownMenuItem(
-                                      value: k,
-                                      child: Text(k),
-                                    ),
-                                  )
-                                  .toList(),
+                              items:
+                                  kategoriList
+                                      .map(
+                                        (k) => DropdownMenuItem(
+                                          value: k,
+                                          child: Text(k),
+                                        ),
+                                      )
+                                      .toList(),
                               onChanged:
-                                  (val) => setState(() => _selectedKategori = val),
+                                  (val) =>
+                                      setState(() => _selectedKategori = val),
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 isDense: true,
@@ -367,32 +381,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Status',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Column(
-                              children: statusList.map((s) {
-                                return RadioListTile<String>(
-                                  value: s['value']!,
-                                  groupValue: _selectedStatus,
-                                  title: Text(s['label']!),
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  onChanged: (v) =>
-                                      setState(() => _selectedStatus = v),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
+                      
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -400,9 +389,10 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _isLoading
-                              ? null
-                              : () => _simpanArtikel(isDraft: true),
+                          onPressed:
+                              _isLoading
+                                  ? null
+                                  : () => _simpanArtikel(isDraft: true),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.red,
@@ -421,9 +411,10 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _isLoading
-                              ? null
-                              : () => _simpanArtikel(isDraft: false),
+                          onPressed:
+                              _isLoading
+                                  ? null
+                                  : () => _simpanArtikel(isDraft: false),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
